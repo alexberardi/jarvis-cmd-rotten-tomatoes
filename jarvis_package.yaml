@@ -1,0 +1,19 @@
+name: "rotten_tomatoes"
+display_name: "Rotten Tomatoes"
+description: "Search Rotten Tomatoes for movie and TV show ratings, Tomatometer scores, cast info, and what's in theaters. No API key required."
+version: "1.0.0"
+min_jarvis_version: "0.9.0"
+license: "MIT"
+author:
+  github: "alexberardi"
+categories: ["entertainment", "movies"]
+platforms: ["darwin", "linux"]
+keywords: ["movies", "tv shows", "ratings", "rotten tomatoes", "tomatometer", "reviews", "theaters"]
+
+components:
+  - type: command
+    name: rotten_tomatoes
+    path: commands/rotten_tomatoes/command.py
+
+packages:
+  - name: httpx
