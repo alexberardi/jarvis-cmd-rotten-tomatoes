@@ -13,11 +13,30 @@ from typing import Any, List
 import httpx
 
 from jarvis_command_sdk import (
-    IJarvisCommand,
     CommandExample,
     CommandResponse,
+    FastPathPattern,
+    IJarvisCommand,
     JarvisParameter,
+    PreRouteResult,
     RequestInformation,
+)
+
+
+# --- Pre-route patterns ---
+# Only the "in_theaters" action is reliably pre-routable — the "search"
+# action needs the LLM to extract the movie title from natural utterances.
+_IN_THEATERS_RE = re.compile(
+    r"^\s*(?:"
+    r"what(?:'?s|\s+is)?\s+(?:new\s+)?in\s+theaters?(?:\s+(?:right\s+now|now|this\s+week))?"
+    r"|what\s+movies?\s+are\s+(?:in\s+theaters?|out)(?:\s+(?:right\s+now|now|this\s+week))?"
+    r"|what'?s\s+(?:out|playing)\s+(?:in\s+theaters?|at\s+the\s+(?:movies?|theater)|right\s+now|now)"
+    r"|in\s+theaters?(?:\s+(?:right\s+)?now)?"
+    r"|movies?\s+in\s+theaters?"
+    r"|what'?s\s+playing\s+at\s+the\s+(?:movies?|theater)"
+    r"|new\s+in\s+theaters?"
+    r")\s*[?.!]*$",
+    re.IGNORECASE,
 )
 
 RT_BASE = "https://www.rottentomatoes.com"
@@ -226,6 +245,25 @@ class RottenTomatoesCommand(IJarvisCommand):
                 {"query": "The Bear", "action": "search"},
             ),
         ]
+
+    # ------------------------------------------------------------------
+    # Fast-path patterns — bypass LLM for "in theaters" only. Search
+    # queries need LLM-extracted titles and stay on the slow path.
+    # ------------------------------------------------------------------
+    @property
+    def fast_path_patterns(self) -> List[FastPathPattern]:
+        return [
+            FastPathPattern(
+                id="rotten_tomatoes.in_theaters",
+                description="Bypass LLM for 'what's in theaters' / 'what movies are out'",
+                example="what movies are in theaters",
+                regex=_IN_THEATERS_RE.pattern,
+                handler="_fp_in_theaters",
+            ),
+        ]
+
+    def _fp_in_theaters(self, match, voice_command: str) -> PreRouteResult | None:
+        return PreRouteResult(arguments={"action": "in_theaters"})
 
     def run(self, request_info: RequestInformation, **kwargs) -> CommandResponse:
         action = kwargs.get("action", "search")
