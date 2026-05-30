@@ -290,11 +290,24 @@ class RottenTomatoesCommand(IJarvisCommand):
 
             elif action == "in_theaters":
                 results = browse_in_theaters()
-                return CommandResponse.success_response({
+                ctx = {
                     "category": "in_theaters",
                     "results": results,
                     "result_count": len(results),
-                })
+                }
+                # Pre-route callers have no LLM downstream — pre-compose a
+                # spoken summary so the wrapper sees a `message`.
+                if request_info.is_pre_routed:
+                    if not results:
+                        ctx["message"] = "I couldn't find what's playing in theaters right now."
+                    else:
+                        titles = [r.get("title", "").strip() for r in results[:4] if r.get("title")]
+                        if titles:
+                            joined = ", ".join(titles[:-1]) + (f", and {titles[-1]}" if len(titles) > 1 else titles[-1])
+                            ctx["message"] = f"In theaters now: {joined}."
+                        else:
+                            ctx["message"] = f"There are {len(results)} movies in theaters."
+                return CommandResponse.success_response(ctx)
 
             else:
                 return CommandResponse.error_response(f"Unknown action: {action}")
