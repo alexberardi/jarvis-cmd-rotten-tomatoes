@@ -21,7 +21,7 @@ def cmd_module():
 
 
 def _make_req(is_pre_routed: bool):
-    from core.request_information import RequestInformation
+    from jarvis_command_sdk import RequestInformation
     return RequestInformation(
         voice_command="what's in theaters",
         conversation_id="c",
